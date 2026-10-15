@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="green" data-mode="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FocusFlow — 50/10 Pomodoro Timer | Yağmur Sesi & Estetik Sayacı</title>
+  <meta name="description" content="FocusFlow: 50 dakika çalışma, 10 dakika mola. Yağmur sesi ambiyansı, seans kutlama animasyonu, matcha yeşili & sakura pembesi temaları ve gece modu ile ücretsiz estetik Pomodoro sayacı.">
+  <meta name="keywords" content="focusflow, pomodoro timer, 50 10 pomodoro, estetik pomodoro, yağmur sesli pomodoro, ders çalışma sayacı, pomodoro sayacı">
+  <meta name="author" content="FocusFlow">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#2e7d32">
+
+  <!-- Open Graph / Facebook / WhatsApp -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="FocusFlow — 50/10 Pomodoro Timer & Yağmur Sesi">
+  <meta property="og:description" content="50 dk çalışma, 10 dk mola. Rahatlatıcı yağmur sesi, seans kutlama animasyonları ve şık matcha/sakura temaları ile derin odaklanma.">
+  <meta property="og:site_name" content="FocusFlow Pomodoro">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="FocusFlow — 50/10 Pomodoro Timer & Yağmur Sesi">
+  <meta name="twitter:description" content="Ders çalışırken rahatlatan yağmur sesi ve kutlama animasyonlu 50/10 Pomodoro sayacı.">
+
+  <!-- Structured Data (Schema.org) for Google -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "FocusFlow Pomodoro Timer",
+    "applicationCategory": "ProductivityApplication",
+    "operatingSystem": "All",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "description": "50/10 Pomodoro Timer with ambient rain sound, session completion celebration animation, task manager, and aesthetic themes."
+  }
+  </script>
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+</head>
+<body>
+  <!-- Canvas for Celebration & Confetti -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- Canvas for Raindrops Effect -->
+  <canvas id="rain-canvas"></canvas>
+
+  <div class="app-wrapper">
+    <!-- Header Navigation -->
+    <header class="header">
+      <div class="brand">
+        <span class="brand-icon">🌱</span>
+        <h1 class="brand-title">FocusFlow <span class="brand-sub">Pomodoro</span></h1>
+      </div>
+
+      <div class="header-actions">
+        <!-- Rain Ambience Quick Control -->
+        <div class="ambience-control" title="Yağmur Sesi ve Ambiyans">
+          <button id="rain-toggle-btn" class="icon-btn" aria-label="Yağmur Sesini Aç/Kapat">
+            <span class="icon">🌧️</span>
+            <span class="rain-label">Yağmur</span>
+          </button>
+          <div class="rain-volume-wrapper" id="rain-volume-box">
+            <input type="range" id="rain-volume" min="0" max="100" value="45" title="Yağmur Sesi Seviyesi">
+          </div>
+        </div>
+
+        <!-- Color Palette Toggle: Green / Pink -->
+        <div class="theme-palette-toggle" title="Renk Temasını Değiştir">
+          <button id="theme-green-btn" class="palette-btn green-btn active" data-color="green" aria-label="Yeşil Matcha Teması">
+            <span class="palette-swatch green-swatch"></span>
+            <span class="palette-name">Matcha</span>
+          </button>
+          <button id="theme-pink-btn" class="palette-btn pink-btn" data-color="pink" aria-label="Pembe Sakura Teması">
+            <span class="palette-swatch pink-swatch"></span>
+            <span class="palette-name">Sakura</span>
+          </button>
+        </div>
+
+        <!-- Dark / Light Mode Toggle -->
+        <button id="dark-mode-btn" class="icon-btn theme-mode-btn" title="Gece / Gündüz Modu" aria-label="Gece Modunu Aç/Kapat">
+          <span class="icon moon-icon">🌙</span>
+          <span class="icon sun-icon">☀️</span>
+        </button>
+
+        <!-- Settings Button -->
+        <button id="settings-open-btn" class="icon-btn" title="Ayarlar" aria-label="Ayarları Aç">
+          <span class="icon">⚙️</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-content">
+      <!-- Mode Tabs (Focus / Short Break / Long Break) -->
+      <nav class="mode-tabs" aria-label="Zamanlayıcı Modları">
+        <button class="mode-tab active" data-mode="work">
+          <span class="tab-icon">🎯</span>
+          <span>Çalışma (50 dk)</span>
+        </button>
+        <button class="mode-tab" data-mode="shortBreak">
+          <span class="tab-icon">☕</span>
+          <span>Kısa Mola (10 dk)</span>
+        </button>
+        <button class="mode-tab" data-mode="longBreak">
+          <span class="tab-icon">🌴</span>
+          <span>Uzun Mola (20 dk)</span>
+        </button>
+      </nav>
+
+      <!-- Center Card: Timer & Progress Ring -->
+      <section class="timer-card glass-panel">
+        <!-- Session Badge -->
+        <div class="session-badge-container">
+          <div class="session-indicator" id="session-indicator-badge">
+            <span class="pulse-dot"></span>
+            <span id="session-text">Seans 1 / 4</span>
+          </div>
+          <span class="mode-status-text" id="mode-status-label">Odaklanma Vakti</span>
+        </div>
+
+        <!-- Circular Progress Timer -->
+        <div class="timer-display-container">
+          <svg class="progress-ring" viewBox="0 0 320 320">
+            <circle class="progress-ring-track" cx="160" cy="160" r="142" />
+            <circle class="progress-ring-indicator" id="progress-indicator" cx="160" cy="160" r="142" />
+          </svg>
+
+          <div class="timer-inner-content">
+            <div class="time-display" id="time-display">50:00</div>
+            <div class="timer-subtext" id="timer-subtext">Derin odaklanma modu</div>
+          </div>
+        </div>
+
+        <!-- Session Dots Tracker -->
+        <div class="session-dots" id="session-dots-container" title="Seans İlerlemesi">
+          <div class="dot active" data-index="1"><span>1</span></div>
+          <div class="dot" data-index="2"><span>2</span></div>
+          <div class="dot" data-index="3"><span>3</span></div>
+          <div class="dot" data-index="4"><span>4</span></div>
+        </div>
+
+        <!-- Controls (Start, Pause, Reset, Skip) -->
+        <div class="timer-controls">
+          <button id="reset-btn" class="btn btn-secondary control-btn" title="Sıfırla (R)">
+            <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+              <path d="M3 3v5h5"/>
+            </svg>
+            <span>Sıfırla</span>
+          </button>
+
+          <button id="start-pause-btn" class="btn btn-primary control-btn-main" title="Başlat / Durdur (Space)">
+            <span class="play-icon">
+              <svg class="btn-svg-play" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="6 4 20 12 6 20 6 4"/>
+              </svg>
+            </span>
+            <span class="pause-icon hidden">
+              <svg class="btn-svg-pause" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="4" width="4" height="16" rx="1"/>
+                <rect x="14" y="4" width="4" height="16" rx="1"/>
+              </svg>
+            </span>
+            <span id="start-btn-label">Başlat</span>
+          </button>
+
+          <button id="skip-btn" class="btn btn-secondary control-btn" title="Sonraki Seansa Geç (S)">
+            <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="5 4 15 12 5 20 5 4" fill="currentColor"/>
+              <line x1="19" y1="5" x2="19" y2="19"/>
+            </svg>
+            <span>Geç</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Productivity Utilities Row -->
+      <section class="utilities-grid">
+        <!-- Quick Task Manager -->
+        <div class="utility-card glass-panel tasks-card">
+          <div class="utility-header">
+            <div class="utility-title">
+              <span class="utility-icon">📝</span>
+              <h3>Bugünkü Görevler</h3>
+            </div>
+            <span class="task-stats" id="task-stats-label">0/0 Tamamlandı</span>
+          </div>
+
+          <form id="task-form" class="task-input-row">
+            <input type="text" id="task-input" placeholder="Odaklanacağın görevi yaz ve Enter'a bas..." maxlength="60" required autocomplete="off">
+            <button type="submit" class="btn btn-primary btn-sm" id="add-task-btn">Ekle</button>
+          </form>
+
+          <ul class="task-list" id="task-list">
+            <!-- Dynamic task items -->
+          </ul>
+        </div>
+
+        <!-- Focus Statistics & Motivation Card -->
+        <div class="utility-card glass-panel stats-card">
+          <div class="utility-header">
+            <div class="utility-title">
+              <span class="utility-icon">📊</span>
+              <h3>Günün Verimliliği</h3>
+            </div>
+            <button id="reset-stats-btn" class="btn-text-subtle" title="İstatistikleri Sıfırla">Sıfırla</button>
+          </div>
+
+          <div class="stats-row">
+            <div class="stat-box">
+              <span class="stat-number" id="completed-sessions-count">0</span>
+              <span class="stat-label">Tamamlanan Seans</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-number" id="total-focus-minutes">0</span>
+              <span class="stat-label">Odak Dakikası</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-number" id="daily-streak">1</span>
+              <span class="stat-label">Günlük Seri 🔥</span>
+            </div>
+          </div>
+
+          <!-- Motivational Quote Banner -->
+          <div class="quote-container">
+            <p class="quote-text" id="quote-text">"Büyük hedeflere, tek bir 50 dakikalık odaklanmayla ulaşılır."</p>
+            <span class="quote-author" id="quote-author">— Odaklanma Rehberi</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-content">
+        <p>FocusFlow Pomodoro &bull; 50 dk Çalışma & 10 dk Mola &bull; Klavye: <code>Boşluk</code> Başlat/Durdur | <code>R</code> Sıfırla | <code>S</code> Geç</p>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Advanced Celebration Overlay (Session Complete Modal) -->
+  <div id="celebration-overlay" class="celebration-overlay hidden" role="dialog" aria-modal="true">
+    <div class="celebration-backdrop"></div>
+    <div class="celebration-card glass-panel">
+      <!-- Glow effect behind card -->
+      <div class="celebration-glow"></div>
+
+      <div class="celebration-badge-anim">
+        <div class="trophy-ring">
+          <span class="trophy-icon">🏆</span>
+        </div>
+        <div class="sparkle sparkle-1">✨</div>
+        <div class="sparkle sparkle-2">🌟</div>
+        <div class="sparkle sparkle-3">💫</div>
+      </div>
+
+      <h2 class="celebration-title" id="celebration-title">🎉 Session 1 Complete!</h2>
+      <p class="celebration-subtitle" id="celebration-subtitle">Harika bir odaklanma sergiledin. Şimdi 10 dakikalık hak ettiğin molanın tadını çıkar!</p>
+
+      <!-- Break Progress Mini Widget inside Celebration -->
+      <div class="break-preview-box">
+        <div class="break-preview-header">
+          <span>☕ Mola Durumu</span>
+          <span class="break-time-badge" id="break-mini-timer">10:00</span>
+        </div>
+        <p class="break-tip">💡 İpucu: Ekrandan uzaklaş, su iç ve derin nefes al.</p>
+      </div>
+
+      <div class="celebration-actions">
+        <button id="dismiss-celebration-btn" class="btn btn-primary celebration-btn">
+          <span>Molaya Başla</span>
+          <span class="btn-arrow">→</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-card glass-panel">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span class="modal-icon">⚙️</span>
+          <h2>Zamanlayıcı ve Ses Ayarları</h2>
+        </div>
+        <button id="settings-close-btn" class="icon-btn close-modal-btn" aria-label="Kapat">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Timer Durations Section -->
+        <div class="settings-group">
+          <h3>⏱️ Süreler (Dakika)</h3>
+          <div class="settings-grid">
+            <div class="setting-item">
+              <label for="work-duration-input">Çalışma Süresi</label>
+              <div class="input-stepper">
+                <input type="number" id="work-duration-input" min="1" max="120" value="50">
+                <span class="unit">dk</span>
+              </div>
+            </div>
+            <div class="setting-item">
+              <label for="short-break-input">Kısa Mola</label>
+              <div class="input-stepper">
+                <input type="number" id="short-break-input" min="1" max="60" value="10">
+                <span class="unit">dk</span>
+              </div>
+            </div>
+            <div class="setting-item">
+              <label for="long-break-input">Uzun Mola</label>
+              <div class="input-stepper">
+                <input type="number" id="long-break-input" min="1" max="90" value="20">
+                <span class="unit">dk</span>
+              </div>
+            </div>
+            <div class="setting-item">
+              <label for="cycle-count-input">Döngü Seans Sayısı</label>
+              <div class="input-stepper">
+                <input type="number" id="cycle-count-input" min="1" max="12" value="4">
+                <span class="unit">seans</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sound & Ambience Section -->
+        <div class="settings-group">
+          <h3>🔔 Ses ve Bildirimler</h3>
+          <div class="setting-row">
+            <div>
+              <span class="setting-label">Mola Başlangıç & Bitiş Sesleri</span>
+              <p class="setting-desc">Molaya girerken ve mola biterken uyarı tonu çalar</p>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="sound-alerts-toggle" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div>
+              <span class="setting-label">Zil Tipi</span>
+              <p class="setting-desc">Mola başlangıç ve bitiş zil tonu</p>
+            </div>
+            <select id="chime-tone-select" class="styled-select">
+              <option value="bell">Kristal Çan (Huzurlu)</option>
+              <option value="marimba">Modern Marimba</option>
+              <option value="tibetan">Tibet Kasesi (Zen)</option>
+              <option value="digital">Dijital Bip</option>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div>
+              <span class="setting-label">Zil Sesi Seviyesi</span>
+              <p class="setting-desc">Uyarı zillerinin çalma şiddeti</p>
+            </div>
+            <div class="volume-slider-group">
+              <input type="range" id="chime-volume" min="0" max="100" value="80">
+              <button id="test-chime-btn" class="btn btn-secondary btn-xs">Test Et</button>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div>
+              <span class="setting-label">Arka Plan Yağmur Tipi</span>
+              <p class="setting-desc">Ders çalışırken rahatlatıcı ses atmosferi</p>
+            </div>
+            <select id="rain-style-select" class="styled-select">
+              <option value="gentle">Hafif Sakin Yağmur</option>
+              <option value="heavy">Yoğun Orman Yağmuru</option>
+              <option value="cozy">Pencereye Vuran Yağmur</option>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div>
+              <span class="setting-label">Masaüstü Bildirimleri</span>
+              <p class="setting-desc">Sekme arka plandayken bildirim gönder</p>
+            </div>
+            <button id="request-notify-btn" class="btn btn-secondary btn-sm">Bildirimi Aç</button>
+          </div>
+        </div>
+
+        <!-- Automation Section -->
+        <div class="settings-group">
+          <h3>⚡ Otomasyon</h3>
+          <div class="setting-row">
+            <div>
+              <span class="setting-label">Molayı Otomatik Başlat</span>
+              <p class="setting-desc">Çalışma bittiğinde molayı beklemeden başlat</p>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="auto-break-toggle" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <div>
+              <span class="setting-label">Yeni Seansı Otomatik Başlat</span>
+              <p class="setting-desc">Mola bittiğinde bir sonraki seansı başlat</p>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="auto-focus-toggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="reset-settings-btn" class="btn btn-secondary">Varsayılana Dön</button>
+        <button id="save-settings-btn" class="btn btn-primary">Kaydet & Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="audio.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
