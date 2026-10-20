@@ -21,6 +21,7 @@ class SoundEngine {
       rain: {
         id: 'rain',
         name: 'Yağmur',
+        icon: '🌧️',
         file: 'sounds/rain.mp3',
         audio: null,
         isPlaying: false,
@@ -29,6 +30,7 @@ class SoundEngine {
       fire: {
         id: 'fire',
         name: 'Şömine',
+        icon: '🔥',
         file: 'sounds/fireplace.mp3',
         audio: null,
         isPlaying: false,
@@ -37,6 +39,7 @@ class SoundEngine {
       jazz: {
         id: 'jazz',
         name: 'Kafe Caz',
+        icon: '☕',
         file: 'sounds/jazz.mp3',
         audio: null,
         isPlaying: false,
@@ -45,6 +48,82 @@ class SoundEngine {
     };
 
     this.initAudioElements();
+    this.initMediaSession();
+  }
+
+  // Media Session API for Lock Screen & Background Playback on iOS / Android
+  initMediaSession() {
+    if (!('mediaSession' in navigator)) return;
+
+    try {
+      navigator.mediaSession.setActionHandler('play', () => {
+        const active = Object.values(this.tracks).filter(t => t.isPlaying);
+        if (active.length === 0) {
+          this.startTrack('rain');
+        } else {
+          active.forEach(t => {
+            if (t.audio && t.audio.paused) {
+              t.audio.play().catch(() => {});
+            }
+          });
+        }
+        navigator.mediaSession.playbackState = 'playing';
+        if (typeof window.syncAmbienceUI === 'function') {
+          window.syncAmbienceUI();
+        }
+      });
+
+      navigator.mediaSession.setActionHandler('pause', () => {
+        Object.values(this.tracks).forEach(t => {
+          if (t.audio && t.isPlaying) {
+            t.audio.pause();
+          }
+        });
+        navigator.mediaSession.playbackState = 'paused';
+        if (typeof window.syncAmbienceUI === 'function') {
+          window.syncAmbienceUI();
+        }
+      });
+
+      navigator.mediaSession.setActionHandler('stop', () => {
+        this.stopAllTracks();
+        navigator.mediaSession.playbackState = 'none';
+        if (typeof window.syncAmbienceUI === 'function') {
+          window.syncAmbienceUI();
+        }
+      });
+    } catch (e) {
+      console.warn('MediaSession handler setup notice:', e);
+    }
+  }
+
+  // Update Lock Screen & Dynamic Island metadata
+  updateMediaSession() {
+    if (!('mediaSession' in navigator)) return;
+
+    const activeTracks = Object.values(this.tracks).filter(t => t.isPlaying);
+
+    if (activeTracks.length === 0) {
+      navigator.mediaSession.playbackState = 'none';
+      return;
+    }
+
+    navigator.mediaSession.playbackState = 'playing';
+    const trackNames = activeTracks.map(t => `${t.icon} ${t.name}`).join(' + ');
+
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: `${trackNames} Ambiyansı`,
+        artist: 'FocusFlow 🌱 Pomodoro',
+        album: '50/10 Derin Odaklanma',
+        artwork: [
+          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' }
+        ]
+      });
+    } catch (e) {
+      console.warn('MediaSession metadata notice:', e);
+    }
   }
 
   // Ensure AudioContext is initialized upon user interaction
@@ -60,14 +139,46 @@ class SoundEngine {
     }
   }
 
-  // Pre-load audio elements for instantaneous playback and seamless looping
+  // Pre-load audio elements attached to DOM for guaranteed mobile background playback
   initAudioElements() {
+    let pool = document.getElementById('audio-pool');
+    if (!pool && typeof document !== 'undefined' && document.body) {
+      pool = document.createElement('div');
+      pool.id = 'audio-pool';
+      pool.style.cssText = 'position:fixed;bottom:0;left:0;width:0;height:0;opacity:0;pointer-events:none;z-index:-999;';
+      pool.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(pool);
+    }
+
     Object.values(this.tracks).forEach(track => {
       try {
-        const audio = new Audio(track.file);
-        audio.loop = true;
-        audio.preload = 'auto';
-        audio.volume = 0;
+        let audio = pool ? pool.querySelector(`#audio-track-${track.id}`) : null;
+        if (!audio) {
+          audio = document.createElement('audio');
+          audio.id = `audio-track-${track.id}`;
+          audio.src = track.file;
+          audio.loop = true;
+          audio.preload = 'auto';
+          audio.volume = 0;
+
+          // Critical mobile background attributes (iOS Safari & Android Chrome)
+          audio.setAttribute('playsinline', '');
+          audio.setAttribute('webkit-playsinline', '');
+          audio.setAttribute('crossorigin', 'anonymous');
+          audio.playsInline = true;
+
+          // Fallback loop guardian if background tab loop event is delayed by OS
+          audio.addEventListener('ended', () => {
+            if (track.isPlaying) {
+              audio.currentTime = 0;
+              audio.play().catch(e => console.warn('Background loop restart:', e));
+            }
+          });
+
+          if (pool) {
+            pool.appendChild(audio);
+          }
+        }
         track.audio = audio;
       } catch (e) {
         console.warn('Audio initialization error for', track.id, e);
@@ -107,6 +218,7 @@ class SoundEngine {
     }
 
     track.isPlaying = true;
+    this.updateMediaSession();
 
     // Smooth fade-in over 350ms
     const step = 0.05;
@@ -140,6 +252,7 @@ class SoundEngine {
     }
 
     track.isPlaying = false;
+    this.updateMediaSession();
 
     // Smooth fade-out over 300ms
     const step = 0.08;
@@ -186,6 +299,7 @@ class SoundEngine {
         this.stopTrack(id);
       }
     });
+    this.updateMediaSession();
   }
 
   /**

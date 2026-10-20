@@ -635,6 +635,22 @@ function toggleAmbientSound(soundId) {
   }
 }
 
+// Synchronize UI if ambient sound playback is controlled via OS Lock Screen or Headphone buttons
+window.syncAmbienceUI = function() {
+  if (!window.soundEngine) return;
+  ['rain', 'fire', 'jazz'].forEach(soundId => {
+    const isPlaying = window.soundEngine.isTrackPlaying(soundId);
+    state.activeSounds[soundId] = isPlaying;
+    const btn = document.getElementById(`sound-${soundId}-btn`);
+    if (btn) {
+      btn.classList.toggle('active', isPlaying);
+    }
+  });
+  if (typeof updateAmbientCanvasState === 'function') {
+    updateAmbientCanvasState();
+  }
+};
+
 function updateAmbienceVolume(val) {
   state.ambienceVolume = Math.max(0, Math.min(1, val / 100));
   if (window.soundEngine) {
