@@ -1,34 +1,238 @@
 /**
- * FocusFlow Pomodoro - Web Audio API Sound Engine
+ * FocusFlow Pomodoro - Sound Engine
  * Features:
- *  - Procedural Rain Audio Synthesizer (Zero external dependencies)
- *  - Organic Click Sounds & Notification Chimes (Break Start & Break End)
+ *  - Real Ambient Sound Player (Rain, Fireplace, Cafe Jazz) with HTML5 Audio & smooth fading
+ *  - Organic Notification Chimes & Mechanical Click (Web Audio API)
  *  - Multiple Chime Styles (Crystal Bell, Modern Marimba, Tibetan Bowl, Digital)
  */
 
 class SoundEngine {
   constructor() {
     this.ctx = null;
-    this.isRainPlaying = false;
-    this.rainGainNode = null;
-    this.rainSource = null;
-    this.rainLFO = null;
-    this.rainDropInterval = null;
     this.masterChimeVolume = 0.8;
-    this.masterRainVolume = 0.45;
     this.selectedChimeStyle = 'bell'; // 'bell', 'marimba', 'tibetan', 'digital'
-    this.selectedRainStyle = 'gentle'; // 'gentle', 'heavy', 'cozy'
+
+    // Ambient Tracks System
+    this.masterAmbienceVolume = 0.65;
+    this.isMuted = false;
+    this.previousVolume = 0.65;
+
+    this.tracks = {
+      rain: {
+        id: 'rain',
+        name: 'Yağmur',
+        file: 'sounds/rain.mp3',
+        audio: null,
+        isPlaying: false,
+        fadeInterval: null
+      },
+      fire: {
+        id: 'fire',
+        name: 'Şömine',
+        file: 'sounds/fireplace.mp3',
+        audio: null,
+        isPlaying: false,
+        fadeInterval: null
+      },
+      jazz: {
+        id: 'jazz',
+        name: 'Kafe Caz',
+        file: 'sounds/jazz.mp3',
+        audio: null,
+        isPlaying: false,
+        fadeInterval: null
+      }
+    };
+
+    this.initAudioElements();
   }
 
   // Ensure AudioContext is initialized upon user interaction
   initContext() {
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      this.ctx = new AudioCtx();
+      if (AudioCtx) {
+        this.ctx = new AudioCtx();
+      }
     }
-    if (this.ctx.state === 'suspended') {
+    if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume();
     }
+  }
+
+  // Pre-load audio elements for instantaneous playback and seamless looping
+  initAudioElements() {
+    Object.values(this.tracks).forEach(track => {
+      try {
+        const audio = new Audio(track.file);
+        audio.loop = true;
+        audio.preload = 'auto';
+        audio.volume = 0;
+        track.audio = audio;
+      } catch (e) {
+        console.warn('Audio initialization error for', track.id, e);
+      }
+    });
+  }
+
+  /* ================= AMBIENT TRACK CONTROLS ================= */
+
+  /**
+   * Start an ambient track with smooth fade-in
+   */
+  startTrack(id) {
+    const track = this.tracks[id];
+    if (!track) return false;
+
+    this.initContext();
+
+    if (!track.audio) {
+      track.audio = new Audio(track.file);
+      track.audio.loop = true;
+    }
+
+    if (track.fadeInterval) {
+      clearInterval(track.fadeInterval);
+      track.fadeInterval = null;
+    }
+
+    const targetVolume = this.isMuted ? 0 : this.masterAmbienceVolume;
+    track.audio.volume = Math.max(0, Math.min(1, track.audio.volume || 0));
+
+    const playPromise = track.audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.warn(`Playback prevented for ${id}:`, err);
+      });
+    }
+
+    track.isPlaying = true;
+
+    // Smooth fade-in over 350ms
+    const step = 0.05;
+    track.fadeInterval = setInterval(() => {
+      if (!track.isPlaying || !track.audio) {
+        clearInterval(track.fadeInterval);
+        return;
+      }
+      if (track.audio.volume + step >= targetVolume) {
+        track.audio.volume = targetVolume;
+        clearInterval(track.fadeInterval);
+        track.fadeInterval = null;
+      } else {
+        track.audio.volume = Math.min(targetVolume, track.audio.volume + step);
+      }
+    }, 25);
+
+    return true;
+  }
+
+  /**
+   * Stop an ambient track with smooth fade-out
+   */
+  stopTrack(id) {
+    const track = this.tracks[id];
+    if (!track || !track.audio) return false;
+
+    if (track.fadeInterval) {
+      clearInterval(track.fadeInterval);
+      track.fadeInterval = null;
+    }
+
+    track.isPlaying = false;
+
+    // Smooth fade-out over 300ms
+    const step = 0.08;
+    track.fadeInterval = setInterval(() => {
+      if (!track.audio) {
+        clearInterval(track.fadeInterval);
+        return;
+      }
+      if (track.audio.volume - step <= 0.01) {
+        track.audio.volume = 0;
+        track.audio.pause();
+        clearInterval(track.fadeInterval);
+        track.fadeInterval = null;
+      } else {
+        track.audio.volume = Math.max(0, track.audio.volume - step);
+      }
+    }, 25);
+
+    return false;
+  }
+
+  /**
+   * Toggle an ambient track (play / stop)
+   */
+  toggleTrack(id) {
+    const track = this.tracks[id];
+    if (!track) return false;
+
+    if (track.isPlaying) {
+      this.stopTrack(id);
+      return false;
+    } else {
+      this.startTrack(id);
+      return true;
+    }
+  }
+
+  /**
+   * Stop all ambient tracks
+   */
+  stopAllTracks() {
+    Object.keys(this.tracks).forEach(id => {
+      if (this.tracks[id].isPlaying) {
+        this.stopTrack(id);
+      }
+    });
+  }
+
+  /**
+   * Check if a specific track is currently playing
+   */
+  isTrackPlaying(id) {
+    return !!(this.tracks[id] && this.tracks[id].isPlaying);
+  }
+
+  /**
+   * Check if any ambient track is currently playing
+   */
+  hasActiveTracks() {
+    return Object.values(this.tracks).some(t => t.isPlaying);
+  }
+
+  /**
+   * Set master volume for all ambient tracks (0 to 1)
+   */
+  setAmbienceVolume(val0to1) {
+    this.masterAmbienceVolume = Math.max(0, Math.min(1, val0to1));
+    if (this.masterAmbienceVolume > 0 && this.isMuted) {
+      this.isMuted = false;
+    }
+    if (!this.isMuted) {
+      Object.values(this.tracks).forEach(track => {
+        if (track.isPlaying && track.audio) {
+          track.audio.volume = this.masterAmbienceVolume;
+        }
+      });
+    }
+  }
+
+  /**
+   * Toggle mute / unmute for all ambient tracks
+   */
+  toggleMute() {
+    this.isMuted = !this.isMuted;
+    const targetVolume = this.isMuted ? 0 : this.masterAmbienceVolume;
+
+    Object.values(this.tracks).forEach(track => {
+      if (track.audio) {
+        track.audio.volume = track.isPlaying ? targetVolume : 0;
+      }
+    });
+
+    return this.isMuted;
   }
 
   /* ================= NOTIFICATION & CLICK SOUNDS ================= */
@@ -39,6 +243,7 @@ class SoundEngine {
   playClick() {
     try {
       this.initContext();
+      if (!this.ctx) return;
       const now = this.ctx.currentTime;
 
       const osc = this.ctx.createOscillator();
@@ -123,6 +328,7 @@ class SoundEngine {
   playCrystalBell(freqs = [659.25, 830.61, 987.77]) {
     try {
       this.initContext();
+      if (!this.ctx) return;
       const now = this.ctx.currentTime;
 
       freqs.forEach((freq, idx) => {
@@ -133,7 +339,6 @@ class SoundEngine {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, now + delay);
 
-        // Gentle metallic harmonic overtone
         const overtoneOsc = this.ctx.createOscillator();
         const overtoneGain = this.ctx.createGain();
         overtoneOsc.type = 'sine';
@@ -171,6 +376,7 @@ class SoundEngine {
   playMarimbaChime(freqs = [523.25, 659.25, 783.99]) {
     try {
       this.initContext();
+      if (!this.ctx) return;
       const now = this.ctx.currentTime;
 
       freqs.forEach((freq, idx) => {
@@ -203,6 +409,7 @@ class SoundEngine {
   playTibetanBowl(fundamental = 440, duration = 3.0) {
     try {
       this.initContext();
+      if (!this.ctx) return;
       const now = this.ctx.currentTime;
 
       const harmonics = [1, 2.76, 5.4, 8.9];
@@ -237,6 +444,7 @@ class SoundEngine {
   playDigitalBeep(freqs = [659.25, 880]) {
     try {
       this.initContext();
+      if (!this.ctx) return;
       const now = this.ctx.currentTime;
 
       freqs.forEach((freq, idx) => {
@@ -262,179 +470,12 @@ class SoundEngine {
     }
   }
 
-  /* ================= PROCEDURAL RAIN AUDIO GENERATOR ================= */
-
-  /**
-   * Creates a multi-layer realistic rainfall sound using procedural noise
-   * and dual resonant filters modulated by a gentle organic breeze LFO.
-   */
-  startRain() {
-    if (this.isRainPlaying) return;
-    try {
-      this.initContext();
-      const now = this.ctx.currentTime;
-
-      // Create 5 seconds looping pink/brownian noise buffer
-      const bufferSize = this.ctx.sampleRate * 5;
-      const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-      const output = noiseBuffer.getChannelData(0);
-
-      // Pink noise filtering algorithm
-      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
-      for (let i = 0; i < bufferSize; i++) {
-        const white = Math.random() * 2 - 1;
-        b0 = 0.99886 * b0 + white * 0.0555179;
-        b1 = 0.99332 * b1 + white * 0.0750759;
-        b2 = 0.96900 * b2 + white * 0.1538520;
-        b3 = 0.86650 * b3 + white * 0.3104856;
-        b4 = 0.55000 * b4 + white * 0.5329522;
-        b5 = -0.7616 * b5 - white * 0.0168980;
-        output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.08;
-        b6 = white * 0.115926;
-      }
-
-      this.rainSource = this.ctx.createBufferSource();
-      this.rainSource.buffer = noiseBuffer;
-      this.rainSource.loop = true;
-
-      // Low-pass filter for rain depth
-      const lowpass = this.ctx.createBiquadFilter();
-      lowpass.type = 'lowpass';
-      let cutoff = 850;
-      if (this.selectedRainStyle === 'heavy') cutoff = 1300;
-      if (this.selectedRainStyle === 'cozy') cutoff = 650;
-      lowpass.frequency.setValueAtTime(cutoff, now);
-
-      // High-pass filter to clean muddy rumble
-      const highpass = this.ctx.createBiquadFilter();
-      highpass.type = 'highpass';
-      highpass.frequency.setValueAtTime(140, now);
-
-      // LFO for subtle natural undulating rain intensity
-      this.rainLFO = this.ctx.createOscillator();
-      const lfoGain = this.ctx.createGain();
-      this.rainLFO.frequency.setValueAtTime(0.2, now); // slow 0.2 Hz cycle
-      lfoGain.gain.setValueAtTime(120, now);
-      this.rainLFO.connect(lfoGain);
-      lfoGain.connect(lowpass.frequency);
-      this.rainLFO.start(now);
-
-      // Rain Master Gain with smooth fade-in
-      this.rainGainNode = this.ctx.createGain();
-      this.rainGainNode.gain.setValueAtTime(0.001, now);
-      this.rainGainNode.gain.linearRampToValueAtTime(this.masterRainVolume, now + 1.2);
-
-      this.rainSource.connect(highpass);
-      highpass.connect(lowpass);
-      lowpass.connect(this.rainGainNode);
-      this.rainGainNode.connect(this.ctx.destination);
-
-      this.rainSource.start(now);
-      this.isRainPlaying = true;
-
-      // Trigger subtle droplet splatters
-      this.startRainDroplets();
-    } catch (e) {
-      console.warn('Start rain error:', e);
-    }
-  }
-
-  /**
-   * Procedural tiny water droplet clicks for realism
-   */
-  startRainDroplets() {
-    this.rainDropInterval = setInterval(() => {
-      if (!this.isRainPlaying || !this.ctx) return;
-      if (Math.random() > 0.45) return;
-
-      try {
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const dropGain = this.ctx.createGain();
-        const dropFilter = this.ctx.createBiquadFilter();
-
-        const dropFreq = 1800 + Math.random() * 2200;
-        dropFilter.type = 'bandpass';
-        dropFilter.frequency.setValueAtTime(dropFreq, now);
-        dropFilter.Q.setValueAtTime(8, now);
-
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(dropFreq, now);
-        osc.frequency.exponentialRampToValueAtTime(dropFreq * 0.4, now + 0.03);
-
-        const dropVol = (0.02 + Math.random() * 0.04) * this.masterRainVolume;
-        dropGain.gain.setValueAtTime(dropVol, now);
-        dropGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
-
-        osc.connect(dropFilter);
-        dropFilter.connect(dropGain);
-        dropGain.connect(this.ctx.destination);
-
-        osc.start(now);
-        osc.stop(now + 0.045);
-      } catch (err) {
-        // ignore droplet glitch
-      }
-    }, 180);
-  }
-
-  /**
-   * Stop rain with smooth fade-out
-   */
-  stopRain() {
-    if (!this.isRainPlaying) return;
-    try {
-      if (this.rainDropInterval) {
-        clearInterval(this.rainDropInterval);
-        this.rainDropInterval = null;
-      }
-
-      if (this.rainGainNode && this.ctx) {
-        const now = this.ctx.currentTime;
-        this.rainGainNode.gain.linearRampToValueAtTime(0.001, now + 0.8);
-        setTimeout(() => {
-          if (this.rainSource) {
-            try { this.rainSource.stop(); } catch(e){}
-            this.rainSource.disconnect();
-            this.rainSource = null;
-          }
-          if (this.rainLFO) {
-            try { this.rainLFO.stop(); } catch(e){}
-            this.rainLFO.disconnect();
-            this.rainLFO = null;
-          }
-          this.isRainPlaying = false;
-        }, 850);
-      } else {
-        this.isRainPlaying = false;
-      }
-    } catch (e) {
-      this.isRainPlaying = false;
-    }
-  }
-
-  setRainVolume(val0to1) {
-    this.masterRainVolume = Math.max(0, Math.min(1, val0to1));
-    if (this.rainGainNode && this.ctx && this.isRainPlaying) {
-      this.rainGainNode.gain.setValueAtTime(this.masterRainVolume, this.ctx.currentTime);
-    }
-  }
-
   setChimeVolume(val0to1) {
     this.masterChimeVolume = Math.max(0, Math.min(1, val0to1));
   }
 
   setChimeStyle(style) {
     this.selectedChimeStyle = style;
-  }
-
-  setRainStyle(style) {
-    this.selectedRainStyle = style;
-    // Restart rain if already active to apply filter change
-    if (this.isRainPlaying) {
-      this.stopRain();
-      setTimeout(() => this.startRain(), 900);
-    }
   }
 }
 

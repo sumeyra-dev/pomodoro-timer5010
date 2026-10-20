@@ -28,9 +28,14 @@ const state = {
   autoStartBreaks: true,
   autoStartFocus: false,
 
-  // Rain ambience
-  rainActive: false,
-  rainVolume: 0.45,
+  // Ambience System
+  activeSounds: {
+    rain: false,
+    fire: false,
+    jazz: false
+  },
+  ambienceVolume: 0.65,
+  isMuted: false,
 
   // Stats & Tasks
   completedSessions: 0,
@@ -64,14 +69,21 @@ const modeStatusLabel = document.getElementById('mode-status-label');
 const sessionDotsContainer = document.getElementById('session-dots-container');
 const modeTabs = document.querySelectorAll('.mode-tab');
 
-// Theme & Rain DOM
+// Theme DOM
 const htmlRoot = document.documentElement;
 const themeGreenBtn = document.getElementById('theme-green-btn');
 const themePinkBtn = document.getElementById('theme-pink-btn');
 const darkModeBtn = document.getElementById('dark-mode-btn');
-const rainToggleBtn = document.getElementById('rain-toggle-btn');
-const rainVolumeInput = document.getElementById('rain-volume');
-const rainCanvas = document.getElementById('rain-canvas');
+
+// Ambience Dock DOM
+const soundRainBtn = document.getElementById('sound-rain-btn');
+const soundFireBtn = document.getElementById('sound-fire-btn');
+const soundJazzBtn = document.getElementById('sound-jazz-btn');
+const ambienceVolumeSlider = document.getElementById('ambience-volume-slider');
+const ambienceVolLabel = document.getElementById('ambience-vol-label');
+const ambienceMuteBtn = document.getElementById('ambience-mute-btn');
+const ambienceVolIcon = document.getElementById('ambience-vol-icon');
+const ambientCanvas = document.getElementById('ambient-canvas') || document.getElementById('rain-canvas');
 
 // Celebration DOM
 const celebrationOverlay = document.getElementById('celebration-overlay');
@@ -131,6 +143,7 @@ function loadStorage() {
       if (parsed.tasks) state.tasks = parsed.tasks;
       if (parsed.autoStartBreaks !== undefined) state.autoStartBreaks = parsed.autoStartBreaks;
       if (parsed.autoStartFocus !== undefined) state.autoStartFocus = parsed.autoStartFocus;
+      if (parsed.ambienceVolume !== undefined) state.ambienceVolume = parsed.ambienceVolume;
     }
   } catch (e) {
     console.warn('Storage read error:', e);
@@ -152,7 +165,8 @@ function saveStorage() {
       dailyStreak: state.dailyStreak,
       tasks: state.tasks,
       autoStartBreaks: state.autoStartBreaks,
-      autoStartFocus: state.autoStartFocus
+      autoStartFocus: state.autoStartFocus,
+      ambienceVolume: state.ambienceVolume
     };
     localStorage.setItem('focusflow_pomodoro_state', JSON.stringify(dataToSave));
   } catch (e) {
@@ -447,12 +461,16 @@ function stopConfetti() {
   ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
 }
 
-/* ================= RAIN BACKGROUND & VISUAL CANVAS ================= */
-let rainDrops = [];
-let rainAnimId = null;
+/* ================= AMBIENT EFFECTS & CANVAS ================= */
+let ambientAnimId = null;
+let rainParticles = [];
+let fireEmbers = [];
+let jazzNotes = [];
+let updateAmbientCanvasState = function() {};
 
-function initRainCanvas() {
-  const canvas = rainCanvas;
+function initAmbientCanvas() {
+  const canvas = ambientCanvas;
+  if (!canvas) return;
   const ctx = canvas.getContext('2d');
 
   function resize() {
@@ -462,10 +480,10 @@ function initRainCanvas() {
   window.addEventListener('resize', resize);
   resize();
 
-  rainDrops = [];
-  const dropCount = 90;
-  for (let i = 0; i < dropCount; i++) {
-    rainDrops.push({
+  // Initialize rain drops
+  rainParticles = [];
+  for (let i = 0; i < 90; i++) {
+    rainParticles.push({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
       length: Math.random() * 22 + 10,
@@ -474,69 +492,170 @@ function initRainCanvas() {
     });
   }
 
-  function renderRain() {
+  // Initialize warm fireplace embers
+  fireEmbers = [];
+  for (let i = 0; i < 45; i++) {
+    fireEmbers.push({
+      x: Math.random() * canvas.width,
+      y: canvas.height + Math.random() * 60,
+      radius: Math.random() * 3 + 1.2,
+      speedY: Math.random() * 1.8 + 0.8,
+      speedX: (Math.random() - 0.5) * 1.2,
+      opacity: Math.random() * 0.7 + 0.25,
+      color: Math.random() > 0.4 ? '#ff7043' : (Math.random() > 0.5 ? '#ffa726' : '#ffca28')
+    });
+  }
+
+  // Initialize jazz music symbols & sparkles
+  const noteSymbols = ['♪', '♫', '♩', '✨', '☕'];
+  jazzNotes = [];
+  for (let i = 0; i < 22; i++) {
+    jazzNotes.push({
+      x: Math.random() * canvas.width,
+      y: canvas.height + Math.random() * 120,
+      symbol: noteSymbols[Math.floor(Math.random() * noteSymbols.length)],
+      size: Math.random() * 10 + 14,
+      speedY: Math.random() * 1.1 + 0.6,
+      sway: Math.random() * 2,
+      swaySpeed: Math.random() * 0.03 + 0.015,
+      opacity: Math.random() * 0.6 + 0.25
+    });
+  }
+
+  function renderAmbient() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const strokeColor = state.themeColor === 'pink' ? '244, 143, 177' : '129, 199, 132';
+    const hasAnyActive = state.activeSounds.rain || state.activeSounds.fire || state.activeSounds.jazz;
 
-    rainDrops.forEach(d => {
-      ctx.beginPath();
-      ctx.strokeStyle = `rgba(${strokeColor}, ${d.opacity})`;
-      ctx.lineWidth = 1.2;
-      ctx.moveTo(d.x, d.y);
-      ctx.lineTo(d.x - 1.5, d.y + d.length);
-      ctx.stroke();
+    // 1. Render Rain Effect
+    if (state.activeSounds.rain) {
+      const strokeColor = state.themeColor === 'pink' ? '244, 143, 177' : '129, 199, 132';
+      rainParticles.forEach(d => {
+        ctx.beginPath();
+        ctx.strokeStyle = `rgba(${strokeColor}, ${d.opacity})`;
+        ctx.lineWidth = 1.2;
+        ctx.moveTo(d.x, d.y);
+        ctx.lineTo(d.x - 1.5, d.y + d.length);
+        ctx.stroke();
 
-      d.y += d.speed;
-      d.x -= 0.6; // gentle wind angle
+        d.y += d.speed;
+        d.x -= 0.6;
+        if (d.y > canvas.height) {
+          d.y = -20;
+          d.x = Math.random() * canvas.width;
+        }
+      });
+    }
 
-      if (d.y > canvas.height) {
-        d.y = -20;
-        d.x = Math.random() * canvas.width;
-      }
-    });
+    // 2. Render Fireplace Embers
+    if (state.activeSounds.fire) {
+      fireEmbers.forEach(e => {
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+        ctx.fillStyle = e.color;
+        ctx.globalAlpha = e.opacity;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = e.color;
+        ctx.fill();
 
-    if (state.rainActive) {
-      rainAnimId = requestAnimationFrame(renderRain);
+        e.y -= e.speedY;
+        e.x += e.speedX + Math.sin(e.y * 0.02) * 0.6;
+        e.opacity -= 0.0016;
+
+        if (e.y < -20 || e.opacity <= 0) {
+          e.y = canvas.height + Math.random() * 40;
+          e.x = Math.random() * canvas.width;
+          e.opacity = Math.random() * 0.7 + 0.3;
+        }
+      });
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    }
+
+    // 3. Render Cafe Jazz Notes & Sparkles
+    if (state.activeSounds.jazz) {
+      const noteColor = state.themeColor === 'pink' ? '#f48fb1' : '#c8e6c9';
+      jazzNotes.forEach(n => {
+        ctx.save();
+        ctx.font = `${n.size}px 'Plus Jakarta Sans', sans-serif`;
+        ctx.fillStyle = noteColor;
+        ctx.globalAlpha = n.opacity;
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = noteColor;
+        ctx.fillText(n.symbol, n.x + Math.sin(n.y * n.swaySpeed) * 15, n.y);
+        ctx.restore();
+
+        n.y -= n.speedY;
+        if (n.y < -30) {
+          n.y = canvas.height + Math.random() * 50;
+          n.x = Math.random() * canvas.width;
+        }
+      });
+      ctx.globalAlpha = 1;
+    }
+
+    if (hasAnyActive) {
+      ambientAnimId = requestAnimationFrame(renderAmbient);
+    } else {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ambientAnimId = null;
     }
   }
 
-  if (state.rainActive) {
-    canvas.classList.add('active');
-    renderRain();
-  } else {
-    canvas.classList.remove('active');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  updateAmbientCanvasState = function() {
+    const hasAnyActive = state.activeSounds.rain || state.activeSounds.fire || state.activeSounds.jazz;
+    if (hasAnyActive) {
+      canvas.classList.add('active');
+      if (!ambientAnimId) {
+        ambientAnimId = requestAnimationFrame(renderAmbient);
+      }
+    } else {
+      canvas.classList.remove('active');
+      if (ambientAnimId) {
+        cancelAnimationFrame(ambientAnimId);
+        ambientAnimId = null;
+      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  };
+}
+
+function toggleAmbientSound(soundId) {
+  if (window.soundEngine) {
+    window.soundEngine.initContext();
+    const isPlaying = window.soundEngine.toggleTrack(soundId);
+    state.activeSounds[soundId] = isPlaying;
+
+    const btn = document.getElementById(`sound-${soundId}-btn`);
+    if (btn) {
+      btn.classList.toggle('active', isPlaying);
+    }
+
+    updateAmbientCanvasState();
   }
 }
 
-function toggleRain(forcedState = null) {
+function updateAmbienceVolume(val) {
+  state.ambienceVolume = Math.max(0, Math.min(1, val / 100));
   if (window.soundEngine) {
-    window.soundEngine.initContext();
+    window.soundEngine.setAmbienceVolume(state.ambienceVolume);
   }
+  if (ambienceVolLabel) {
+    ambienceVolLabel.textContent = `${val}%`;
+  }
+  if (state.isMuted && val > 0) {
+    state.isMuted = false;
+    if (ambienceVolIcon) ambienceVolIcon.textContent = '🔊';
+  }
+  saveStorage();
+}
 
-  state.rainActive = forcedState !== null ? forcedState : !state.rainActive;
-  const ambienceWrapper = document.querySelector('.ambience-control');
-
-  if (state.rainActive) {
-    ambienceWrapper.classList.add('active');
-    rainCanvas.classList.add('active');
-    if (window.soundEngine) {
-      window.soundEngine.startRain();
+function toggleAmbienceMute() {
+  if (window.soundEngine) {
+    state.isMuted = window.soundEngine.toggleMute();
+    if (ambienceVolIcon) {
+      ambienceVolIcon.textContent = state.isMuted ? '🔇' : '🔊';
     }
-    initRainCanvas();
-  } else {
-    ambienceWrapper.classList.remove('active');
-    rainCanvas.classList.remove('active');
-    if (window.soundEngine) {
-      window.soundEngine.stopRain();
-    }
-    if (rainAnimId) {
-      cancelAnimationFrame(rainAnimId);
-      rainAnimId = null;
-    }
-    const ctx = rainCanvas.getContext('2d');
-    ctx.clearRect(0, 0, rainCanvas.width, rainCanvas.height);
   }
 }
 
@@ -772,18 +891,21 @@ function setupEventListeners() {
     toggleThemeMode();
   });
 
-  // Rain Toggle & Volume
-  rainToggleBtn.addEventListener('click', () => {
-    toggleRain();
-  });
+  // Ambience Chips (Rain, Fireplace, Cafe Jazz)
+  if (soundRainBtn) soundRainBtn.addEventListener('click', () => toggleAmbientSound('rain'));
+  if (soundFireBtn) soundFireBtn.addEventListener('click', () => toggleAmbientSound('fire'));
+  if (soundJazzBtn) soundJazzBtn.addEventListener('click', () => toggleAmbientSound('jazz'));
 
-  rainVolumeInput.addEventListener('input', (e) => {
-    const vol = parseFloat(e.target.value) / 100;
-    state.rainVolume = vol;
-    if (window.soundEngine) {
-      window.soundEngine.setRainVolume(vol);
-    }
-  });
+  // Ambience Volume & Mute
+  if (ambienceVolumeSlider) {
+    ambienceVolumeSlider.addEventListener('input', (e) => {
+      updateAmbienceVolume(parseInt(e.target.value, 10));
+    });
+  }
+
+  if (ambienceMuteBtn) {
+    ambienceMuteBtn.addEventListener('click', toggleAmbienceMute);
+  }
 
   // Celebration Modal Dismiss
   dismissCelebrationBtn.addEventListener('click', () => {
@@ -853,7 +975,11 @@ function setupEventListeners() {
     } else if (e.key === 's' || e.key === 'S') {
       skipBtn.click();
     } else if (e.key === 'm' || e.key === 'M') {
-      toggleRain();
+      if (window.soundEngine && window.soundEngine.hasActiveTracks()) {
+        toggleAmbienceMute();
+      } else {
+        toggleAmbientSound('rain');
+      }
     } else if (e.key === 'Escape') {
       closeSettings();
       hideCelebrationAnimation();
@@ -875,11 +1001,17 @@ function initApp() {
   rotateQuote();
   setupEventListeners();
 
-  // Set rain volume from stored state
-  rainVolumeInput.value = Math.round(state.rainVolume * 100);
-  if (window.soundEngine) {
-    window.soundEngine.setRainVolume(state.rainVolume);
+  // Set ambience volume from stored state
+  if (ambienceVolumeSlider) {
+    ambienceVolumeSlider.value = Math.round(state.ambienceVolume * 100);
   }
+  if (ambienceVolLabel) {
+    ambienceVolLabel.textContent = `${Math.round(state.ambienceVolume * 100)}%`;
+  }
+  if (window.soundEngine) {
+    window.soundEngine.setAmbienceVolume(state.ambienceVolume);
+  }
+  initAmbientCanvas();
 }
 
 // Boot up

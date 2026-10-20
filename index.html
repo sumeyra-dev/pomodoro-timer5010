@@ -49,8 +49,8 @@
   <!-- Canvas for Celebration & Confetti -->
   <canvas id="confetti-canvas"></canvas>
 
-  <!-- Canvas for Raindrops Effect -->
-  <canvas id="rain-canvas"></canvas>
+  <!-- Canvas for Ambience Effects (Rain, Fireplace Embers, Cafe Jazz) -->
+  <canvas id="ambient-canvas"></canvas>
 
   <div class="app-wrapper">
     <!-- Header Navigation -->
@@ -61,17 +61,6 @@
       </div>
 
       <div class="header-actions">
-        <!-- Rain Ambience Quick Control -->
-        <div class="ambience-control" title="Yağmur Sesi ve Ambiyans">
-          <button id="rain-toggle-btn" class="icon-btn" aria-label="Yağmur Sesini Aç/Kapat">
-            <span class="icon">🌧️</span>
-            <span class="rain-label">Yağmur</span>
-          </button>
-          <div class="rain-volume-wrapper" id="rain-volume-box">
-            <input type="range" id="rain-volume" min="0" max="100" value="45" title="Yağmur Sesi Seviyesi">
-          </div>
-        </div>
-
         <!-- Color Palette Toggle: Green / Pink -->
         <div class="theme-palette-toggle" title="Renk Temasını Değiştir">
           <button id="theme-green-btn" class="palette-btn green-btn active" data-color="green" aria-label="Yeşil Matcha Teması">
@@ -114,6 +103,43 @@
           <span>Uzun Mola (20 dk)</span>
         </button>
       </nav>
+
+      <!-- Ambient Sound Dock: Rain, Fireplace, Cafe Jazz -->
+      <section class="ambience-dock glass-panel" aria-label="Arka Plan Ambiyans Sesleri">
+        <div class="ambience-dock-top">
+          <div class="ambience-dock-title">
+            <span class="ambience-dock-icon">🎧</span>
+            <span>Odaklanma Ambiyansı</span>
+          </div>
+          <div class="ambience-volume-wrapper" title="Ambiyans Ses Seviyesi">
+            <button id="ambience-mute-btn" class="icon-btn-ghost" aria-label="Sesi Kapat / Aç" title="Sesi Aç/Kapat">
+              <span id="ambience-vol-icon">🔊</span>
+            </button>
+            <input type="range" id="ambience-volume-slider" min="0" max="100" value="65" title="Ses Seviyesi">
+            <span id="ambience-vol-label" class="vol-label">65%</span>
+          </div>
+        </div>
+
+        <div class="ambience-chips">
+          <button id="sound-rain-btn" class="ambience-chip" data-sound="rain" title="Yağmur Sesi Aç/Kapat">
+            <span class="chip-icon">🌧️</span>
+            <span class="chip-name">Yağmur</span>
+            <span class="sound-wave"><span></span><span></span><span></span></span>
+          </button>
+
+          <button id="sound-fire-btn" class="ambience-chip" data-sound="fire" title="Şömine Ateşi Aç/Kapat">
+            <span class="chip-icon">🔥</span>
+            <span class="chip-name">Şömine</span>
+            <span class="sound-wave"><span></span><span></span><span></span></span>
+          </button>
+
+          <button id="sound-jazz-btn" class="ambience-chip" data-sound="jazz" title="Kafe Caz Müziği Aç/Kapat">
+            <span class="chip-icon">☕</span>
+            <span class="chip-name">Kafe Caz</span>
+            <span class="sound-wave"><span></span><span></span><span></span></span>
+          </button>
+        </div>
+      </section>
 
       <!-- Center Card: Timer & Progress Ring -->
       <section class="timer-card glass-panel">
@@ -370,14 +396,10 @@
 
           <div class="setting-row">
             <div>
-              <span class="setting-label">Arka Plan Yağmur Tipi</span>
-              <p class="setting-desc">Ders çalışırken rahatlatıcı ses atmosferi</p>
+              <span class="setting-label">Arka Plan Ambiyans Sesleri</span>
+              <p class="setting-desc">Yağmur, Şömine ve Kafe Caz seslerini ana sayfadaki ses çubuğundan doğrudan açabilirsiniz</p>
             </div>
-            <select id="rain-style-select" class="styled-select">
-              <option value="gentle">Hafif Sakin Yağmur</option>
-              <option value="heavy">Yoğun Orman Yağmuru</option>
-              <option value="cozy">Pencereye Vuran Yağmur</option>
-            </select>
+            <span class="badge-subtle">🎧 Ana Sayfada</span>
           </div>
 
           <div class="setting-row">
