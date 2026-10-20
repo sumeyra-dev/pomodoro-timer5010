@@ -18,10 +18,19 @@ class SoundEngine {
     this.previousVolume = 0.65;
 
     this.tracks = {
+      natureRain: {
+        id: 'natureRain',
+        name: 'Doğa Yağmuru',
+        icon: '🌧️',
+        file: 'sounds/nature_rain.wav',
+        audio: null,
+        isPlaying: false,
+        fadeInterval: null
+      },
       rain: {
         id: 'rain',
-        name: 'Yağmur',
-        icon: '🌧️',
+        name: 'Sağanak',
+        icon: '⛈️',
         file: 'sounds/rain.mp3',
         audio: null,
         isPlaying: false,

@@ -30,6 +30,7 @@ const state = {
 
   // Ambience System
   activeSounds: {
+    natureRain: false,
     rain: false,
     fire: false,
     jazz: false
@@ -76,6 +77,7 @@ const themePinkBtn = document.getElementById('theme-pink-btn');
 const darkModeBtn = document.getElementById('dark-mode-btn');
 
 // Ambience Dock DOM
+const soundNatureRainBtn = document.getElementById('sound-natureRain-btn');
 const soundRainBtn = document.getElementById('sound-rain-btn');
 const soundFireBtn = document.getElementById('sound-fire-btn');
 const soundJazzBtn = document.getElementById('sound-jazz-btn');
@@ -525,10 +527,11 @@ function initAmbientCanvas() {
   function renderAmbient() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const hasAnyActive = state.activeSounds.rain || state.activeSounds.fire || state.activeSounds.jazz;
+    const isRaining = state.activeSounds.natureRain || state.activeSounds.rain;
+    const hasAnyActive = isRaining || state.activeSounds.fire || state.activeSounds.jazz;
 
     // 1. Render Rain Effect
-    if (state.activeSounds.rain) {
+    if (isRaining) {
       const strokeColor = state.themeColor === 'pink' ? '244, 143, 177' : '129, 199, 132';
       rainParticles.forEach(d => {
         ctx.beginPath();
@@ -603,7 +606,8 @@ function initAmbientCanvas() {
   }
 
   updateAmbientCanvasState = function() {
-    const hasAnyActive = state.activeSounds.rain || state.activeSounds.fire || state.activeSounds.jazz;
+    const isRaining = state.activeSounds.natureRain || state.activeSounds.rain;
+    const hasAnyActive = isRaining || state.activeSounds.fire || state.activeSounds.jazz;
     if (hasAnyActive) {
       canvas.classList.add('active');
       if (!ambientAnimId) {
@@ -638,7 +642,7 @@ function toggleAmbientSound(soundId) {
 // Synchronize UI if ambient sound playback is controlled via OS Lock Screen or Headphone buttons
 window.syncAmbienceUI = function() {
   if (!window.soundEngine) return;
-  ['rain', 'fire', 'jazz'].forEach(soundId => {
+  ['natureRain', 'rain', 'fire', 'jazz'].forEach(soundId => {
     const isPlaying = window.soundEngine.isTrackPlaying(soundId);
     state.activeSounds[soundId] = isPlaying;
     const btn = document.getElementById(`sound-${soundId}-btn`);
@@ -907,7 +911,8 @@ function setupEventListeners() {
     toggleThemeMode();
   });
 
-  // Ambience Chips (Rain, Fireplace, Cafe Jazz)
+  // Ambience Chips (Nature Rain, Heavy Rain, Fireplace, Cafe Jazz)
+  if (soundNatureRainBtn) soundNatureRainBtn.addEventListener('click', () => toggleAmbientSound('natureRain'));
   if (soundRainBtn) soundRainBtn.addEventListener('click', () => toggleAmbientSound('rain'));
   if (soundFireBtn) soundFireBtn.addEventListener('click', () => toggleAmbientSound('fire'));
   if (soundJazzBtn) soundJazzBtn.addEventListener('click', () => toggleAmbientSound('jazz'));
