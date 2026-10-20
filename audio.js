@@ -198,7 +198,7 @@ class SoundEngine {
   /* ================= AMBIENT TRACK CONTROLS ================= */
 
   /**
-   * Start an ambient track with smooth fade-in
+   * Start an ambient track
    */
   startTrack(id) {
     const track = this.tracks[id];
@@ -207,17 +207,21 @@ class SoundEngine {
     this.initContext();
 
     if (!track.audio) {
-      track.audio = new Audio(track.file);
-      track.audio.loop = true;
+      this.initAudioElements();
     }
+
+    if (!track.audio) return false;
 
     if (track.fadeInterval) {
       clearInterval(track.fadeInterval);
       track.fadeInterval = null;
     }
 
-    const targetVolume = this.isMuted ? 0 : this.masterAmbienceVolume;
-    track.audio.volume = Math.max(0, Math.min(1, track.audio.volume || 0));
+    const shouldMute = this.isMuted || this.masterAmbienceVolume <= 0.01;
+    track.audio.muted = shouldMute;
+    try {
+      track.audio.volume = this.masterAmbienceVolume;
+    } catch (e) {}
 
     const playPromise = track.audio.play();
     if (playPromise !== undefined) {
@@ -228,32 +232,15 @@ class SoundEngine {
 
     track.isPlaying = true;
     this.updateMediaSession();
-
-    // Smooth fade-in over 350ms
-    const step = 0.05;
-    track.fadeInterval = setInterval(() => {
-      if (!track.isPlaying || !track.audio) {
-        clearInterval(track.fadeInterval);
-        return;
-      }
-      if (track.audio.volume + step >= targetVolume) {
-        track.audio.volume = targetVolume;
-        clearInterval(track.fadeInterval);
-        track.fadeInterval = null;
-      } else {
-        track.audio.volume = Math.min(targetVolume, track.audio.volume + step);
-      }
-    }, 25);
-
     return true;
   }
 
   /**
-   * Stop an ambient track with smooth fade-out
+   * Stop an ambient track immediately
    */
   stopTrack(id) {
     const track = this.tracks[id];
-    if (!track || !track.audio) return false;
+    if (!track) return false;
 
     if (track.fadeInterval) {
       clearInterval(track.fadeInterval);
@@ -261,25 +248,17 @@ class SoundEngine {
     }
 
     track.isPlaying = false;
-    this.updateMediaSession();
 
-    // Smooth fade-out over 300ms
-    const step = 0.08;
-    track.fadeInterval = setInterval(() => {
-      if (!track.audio) {
-        clearInterval(track.fadeInterval);
-        return;
-      }
-      if (track.audio.volume - step <= 0.01) {
-        track.audio.volume = 0;
+    if (track.audio) {
+      try {
         track.audio.pause();
-        clearInterval(track.fadeInterval);
-        track.fadeInterval = null;
-      } else {
-        track.audio.volume = Math.max(0, track.audio.volume - step);
+        track.audio.currentTime = 0;
+      } catch (e) {
+        console.warn('Error pausing track:', e);
       }
-    }, 25);
+    }
 
+    this.updateMediaSession();
     return false;
   }
 
@@ -304,9 +283,7 @@ class SoundEngine {
    */
   stopAllTracks() {
     Object.keys(this.tracks).forEach(id => {
-      if (this.tracks[id].isPlaying) {
-        this.stopTrack(id);
-      }
+      this.stopTrack(id);
     });
     this.updateMediaSession();
   }
@@ -330,16 +307,16 @@ class SoundEngine {
    */
   setAmbienceVolume(val0to1) {
     this.masterAmbienceVolume = Math.max(0, Math.min(1, val0to1));
-    if (this.masterAmbienceVolume > 0 && this.isMuted) {
-      this.isMuted = false;
-    }
-    if (!this.isMuted) {
-      Object.values(this.tracks).forEach(track => {
-        if (track.isPlaying && track.audio) {
+    const shouldMute = this.isMuted || this.masterAmbienceVolume <= 0.01;
+
+    Object.values(this.tracks).forEach(track => {
+      if (track.audio) {
+        track.audio.muted = shouldMute;
+        try {
           track.audio.volume = this.masterAmbienceVolume;
-        }
-      });
-    }
+        } catch (e) {}
+      }
+    });
   }
 
   /**
@@ -347,11 +324,14 @@ class SoundEngine {
    */
   toggleMute() {
     this.isMuted = !this.isMuted;
-    const targetVolume = this.isMuted ? 0 : this.masterAmbienceVolume;
+    const shouldMute = this.isMuted || this.masterAmbienceVolume <= 0.01;
 
     Object.values(this.tracks).forEach(track => {
       if (track.audio) {
-        track.audio.volume = track.isPlaying ? targetVolume : 0;
+        track.audio.muted = shouldMute;
+        try {
+          track.audio.volume = shouldMute ? 0 : this.masterAmbienceVolume;
+        } catch (e) {}
       }
     });
 

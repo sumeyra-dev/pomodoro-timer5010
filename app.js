@@ -657,15 +657,18 @@ window.syncAmbienceUI = function() {
 
 function updateAmbienceVolume(val) {
   state.ambienceVolume = Math.max(0, Math.min(1, val / 100));
+  if (val === 0) {
+    state.isMuted = true;
+    if (ambienceVolIcon) ambienceVolIcon.textContent = '🔇';
+  } else if (state.isMuted && val > 0) {
+    state.isMuted = false;
+    if (ambienceVolIcon) ambienceVolIcon.textContent = '🔊';
+  }
   if (window.soundEngine) {
     window.soundEngine.setAmbienceVolume(state.ambienceVolume);
   }
   if (ambienceVolLabel) {
     ambienceVolLabel.textContent = `${val}%`;
-  }
-  if (state.isMuted && val > 0) {
-    state.isMuted = false;
-    if (ambienceVolIcon) ambienceVolIcon.textContent = '🔊';
   }
   saveStorage();
 }
