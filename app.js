@@ -632,12 +632,37 @@ function toggleAmbientSound(soundId) {
 
     const btn = document.getElementById(`sound-${soundId}-btn`);
     if (btn) {
-      btn.classList.toggle('active', isPlaying);
+      if (!isPlaying) {
+        btn.classList.remove('active', 'loading');
+      }
     }
 
     updateAmbientCanvasState();
   }
 }
+
+// Track loading & buffer state callbacks for mobile/iPad responsiveness
+window.onTrackPlaying = function(soundId) {
+  const btn = document.getElementById(`sound-${soundId}-btn`);
+  if (btn && state.activeSounds[soundId]) {
+    btn.classList.remove('loading');
+    btn.classList.add('active');
+  }
+};
+
+window.onTrackWaiting = function(soundId) {
+  const btn = document.getElementById(`sound-${soundId}-btn`);
+  if (btn && state.activeSounds[soundId]) {
+    btn.classList.add('loading');
+  }
+};
+
+window.onTrackStopped = function(soundId) {
+  const btn = document.getElementById(`sound-${soundId}-btn`);
+  if (btn) {
+    btn.classList.remove('loading', 'active');
+  }
+};
 
 // Synchronize UI if ambient sound playback is controlled via OS Lock Screen or Headphone buttons
 window.syncAmbienceUI = function() {

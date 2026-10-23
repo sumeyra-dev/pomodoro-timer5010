@@ -167,7 +167,7 @@ class SoundEngine {
           audio.id = `audio-track-${track.id}`;
           audio.src = track.file;
           audio.loop = true;
-          audio.preload = 'auto';
+          audio.preload = 'none';
           audio.volume = 0;
 
           // Critical mobile background attributes (iOS Safari & Android Chrome)
@@ -175,6 +175,25 @@ class SoundEngine {
           audio.setAttribute('webkit-playsinline', '');
           audio.setAttribute('crossorigin', 'anonymous');
           audio.playsInline = true;
+
+          // Buffer & playback state event listeners
+          audio.addEventListener('playing', () => {
+            if (typeof window.onTrackPlaying === 'function') {
+              window.onTrackPlaying(track.id);
+            }
+          });
+
+          audio.addEventListener('waiting', () => {
+            if (track.isPlaying && typeof window.onTrackWaiting === 'function') {
+              window.onTrackWaiting(track.id);
+            }
+          });
+
+          audio.addEventListener('canplay', () => {
+            if (track.isPlaying && typeof window.onTrackPlaying === 'function') {
+              window.onTrackPlaying(track.id);
+            }
+          });
 
           // Fallback loop guardian if background tab loop event is delayed by OS
           audio.addEventListener('ended', () => {
@@ -232,6 +251,12 @@ class SoundEngine {
 
     track.isPlaying = true;
     this.updateMediaSession();
+
+    if (track.audio.readyState >= 3) {
+      if (typeof window.onTrackPlaying === 'function') window.onTrackPlaying(id);
+    } else {
+      if (typeof window.onTrackWaiting === 'function') window.onTrackWaiting(id);
+    }
     return true;
   }
 
@@ -259,6 +284,9 @@ class SoundEngine {
     }
 
     this.updateMediaSession();
+    if (typeof window.onTrackStopped === 'function') {
+      window.onTrackStopped(id);
+    }
     return false;
   }
 

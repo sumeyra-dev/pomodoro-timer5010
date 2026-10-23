@@ -356,6 +356,24 @@ body::after {
   transform: scale(0.97);
 }
 
+/* Buffering & Loading feedback */
+.ambience-chip.loading {
+  opacity: 0.8;
+  animation: pulseChipLoading 1.1s ease-in-out infinite;
+  border-color: var(--accent-primary);
+}
+
+@keyframes pulseChipLoading {
+  0%, 100% {
+    opacity: 0.65;
+    transform: scale(0.98);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.01);
+  }
+}
+
 .chip-icon {
   font-size: 1.15rem;
   line-height: 1;
